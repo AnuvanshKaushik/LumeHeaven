@@ -1,4 +1,5 @@
 import User from "../models/User.js";
+import Product from "../models/Product.js";
 
 const populateCart = (query) =>
   query.populate({
@@ -18,9 +19,19 @@ export const getCart = async (req, res) => {
 export const addToCart = async (req, res) => {
   try {
     const { productId, quantity = 1 } = req.body;
+    const quantityToAdd = Math.max(1, Number(quantity) || 1);
 
     if (!productId) {
       return res.status(400).json({ message: "productId is required" });
+    }
+
+    const product = await Product.findById(productId).select("name stock");
+    if (!product) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    if (product.stock <= 0) {
+      return res.status(400).json({ message: "This product is out of stock" });
     }
 
     const user = await User.findById(req.user.id);
@@ -30,9 +41,20 @@ export const addToCart = async (req, res) => {
 
     const index = user.cart.findIndex((item) => item.product.toString() === productId);
     if (index >= 0) {
-      user.cart[index].quantity += Number(quantity);
+      const nextQuantity = user.cart[index].quantity + quantityToAdd;
+      if (nextQuantity > product.stock) {
+        return res
+          .status(400)
+          .json({ message: `Only ${product.stock} unit(s) available in stock` });
+      }
+      user.cart[index].quantity = nextQuantity;
     } else {
-      user.cart.push({ product: productId, quantity: Number(quantity) });
+      if (quantityToAdd > product.stock) {
+        return res
+          .status(400)
+          .json({ message: `Only ${product.stock} unit(s) available in stock` });
+      }
+      user.cart.push({ product: productId, quantity: quantityToAdd });
     }
 
     await user.save();
@@ -47,9 +69,25 @@ export const addToCart = async (req, res) => {
 export const updateCartItem = async (req, res) => {
   try {
     const { productId, quantity } = req.body;
+    const nextQuantity = Math.max(1, Number(quantity));
 
     if (!productId || quantity === undefined) {
       return res.status(400).json({ message: "productId and quantity are required" });
+    }
+
+    const product = await Product.findById(productId).select("stock");
+    if (!product) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    if (product.stock <= 0) {
+      return res.status(400).json({ message: "This product is out of stock" });
+    }
+
+    if (nextQuantity > product.stock) {
+      return res
+        .status(400)
+        .json({ message: `Only ${product.stock} unit(s) available in stock` });
     }
 
     const user = await User.findById(req.user.id);
@@ -62,7 +100,7 @@ export const updateCartItem = async (req, res) => {
       return res.status(404).json({ message: "Cart item not found" });
     }
 
-    item.quantity = Math.max(1, Number(quantity));
+    item.quantity = nextQuantity;
     await user.save();
 
     const hydrated = await populateCart(User.findById(req.user.id));

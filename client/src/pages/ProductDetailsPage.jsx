@@ -44,6 +44,11 @@ const ProductDetailsPage = () => {
   }, [id]);
 
   const addToCart = async () => {
+    if (Number(product?.stock || 0) <= 0) {
+      toast.error("This product is out of stock");
+      return;
+    }
+
     try {
       await api.post("/cart", { productId: id, quantity: 1 });
       toast.success("Added to cart");
@@ -67,6 +72,7 @@ const ProductDetailsPage = () => {
 
   if (loading) return <Loader text="Loading product..." />;
   if (!product) return <div className="page-wrap">Product not found.</div>;
+  const outOfStock = Number(product.stock || 0) <= 0;
 
   return (
     <main className="page-wrap">
@@ -105,10 +111,12 @@ const ProductDetailsPage = () => {
             Category: {product.category?.name || "Uncategorized"}
             {product.subcategoryDetails?.name ? ` / ${product.subcategoryDetails.name}` : ""}
           </p>
-          <p>{product.stock > 0 ? `In stock (${product.stock})` : "Out of stock"}</p>
+          <p className={`stock-note ${outOfStock ? "out" : "in"}`}>
+            {outOfStock ? "Out of stock" : `In stock (${product.stock})`}
+          </p>
           <p>Rating: {Number(product.rating || 0).toFixed(1)} / 5 ({product.numReviews} reviews)</p>
-          <button className="btn btn-primary" onClick={addToCart}>
-            Add to Cart
+          <button className="btn btn-primary" disabled={outOfStock} onClick={addToCart}>
+            {outOfStock ? "Out of Stock" : "Add to Cart"}
           </button>
         </div>
       </section>

@@ -241,6 +241,13 @@ h4 {
   transform: translateY(0);
 }
 
+.btn:disabled {
+  opacity: 0.62;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
 .btn-primary {
   color: #ffffff;
   background: linear-gradient(135deg, var(--primary), var(--primary-2));
@@ -526,6 +533,21 @@ select:focus {
   padding: 0.28rem 0.6rem;
 }
 
+.badge-stock {
+  position: absolute;
+  top: 42px;
+  left: 12px;
+  color: #ffffff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 0.28rem 0.6rem;
+}
+
+.badge-stock-out {
+  background: linear-gradient(135deg, #ef4444, #b91c1c);
+}
+
 .quick-view-btn {
   position: absolute;
   top: 12px;
@@ -567,6 +589,20 @@ select:focus {
 .rating-row {
   display: flex;
   gap: 0.1rem;
+}
+
+.stock-note {
+  margin: 0.4rem 0 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.stock-note.in {
+  color: #15803d;
+}
+
+.stock-note.out {
+  color: var(--danger);
 }
 
 .star {

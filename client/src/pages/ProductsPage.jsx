@@ -167,16 +167,21 @@ const ProductsPage = () => {
     setSearchParams(params);
   };
 
-  const addToCart = async (productId) => {
+  const addToCart = async (product) => {
     if (!user || user.role !== "customer") {
       toast.error("Please login as customer first");
       navigate("/customer-auth");
       return;
     }
 
-    setAddingProductId(productId);
+    if (Number(product?.stock || 0) <= 0) {
+      toast.error("This product is out of stock");
+      return;
+    }
+
+    setAddingProductId(product._id);
     try {
-      await api.post("/cart", { productId, quantity: 1 });
+      await api.post("/cart", { productId: product._id, quantity: 1 });
       toast.success("Added to cart");
     } catch (error) {
       toast.error(error?.response?.data?.message || "Failed to add to cart");
@@ -290,6 +295,7 @@ const ProductsPage = () => {
           {products.map((product, index) => {
             const image = product.images?.[0] || product.imageUrl;
             const discountedPrice = Math.round(Number(product.price) * 0.88);
+            const outOfStock = Number(product.stock || 0) <= 0;
             return (
               <motion.article
                 key={product._id}
@@ -302,6 +308,7 @@ const ProductsPage = () => {
                   <img src={image} alt={product.name} loading="lazy" />
                 </Link>
                 <span className="badge-discount">12% OFF</span>
+                {outOfStock && <span className="badge-stock badge-stock-out">Out of Stock</span>}
                 <button className="quick-view-btn" onClick={() => setQuickViewProduct(product)}>
                   Quick View
                 </button>
@@ -316,10 +323,13 @@ const ProductsPage = () => {
                     {product.category?.name || "Uncategorized"}
                     {product.subcategoryDetails?.name ? ` / ${product.subcategoryDetails.name}` : ""}
                   </small>
+                  <p className={`stock-note ${outOfStock ? "out" : "in"}`}>
+                    {outOfStock ? "Out of stock" : `In stock (${product.stock})`}
+                  </p>
                 </div>
                 <div className="card-actions">
-                  <button className="btn btn-primary ripple" onClick={() => addToCart(product._id)}>
-                    Add to Cart
+                  <button className="btn btn-primary ripple" disabled={outOfStock} onClick={() => addToCart(product)}>
+                    {outOfStock ? "Out of Stock" : "Add to Cart"}
                   </button>
                   <button className="btn btn-light ripple" onClick={() => toggleWishlist(product._id)}>
                     Wishlist
@@ -358,12 +368,13 @@ const ProductsPage = () => {
                 </Link>
                 <button
                   className="btn btn-primary ripple"
+                  disabled={Number(quickViewProduct.stock || 0) <= 0}
                   onClick={() => {
-                    addToCart(quickViewProduct._id);
+                    addToCart(quickViewProduct);
                     setQuickViewProduct(null);
                   }}
                 >
-                  Add to Cart
+                  {Number(quickViewProduct.stock || 0) <= 0 ? "Out of Stock" : "Add to Cart"}
                 </button>
               </div>
             </motion.div>

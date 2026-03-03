@@ -1,20 +1,43 @@
+import mongoose from "mongoose";
 import Order from "../models/Order.js";
+import Product from "../models/Product.js";
 import User from "../models/User.js";
 import { sendOrderConfirmationEmail } from "../services/mailService.js";
 
 const createOrderCode = () => `LS-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
 
 export const placeOrder = async (req, res) => {
+  const session = await mongoose.startSession();
+  let transactionCommitted = false;
   try {
+    session.startTransaction();
+
+    const fail = (status, message) => {
+      const error = new Error(message);
+      error.status = status;
+      throw error;
+    };
+
     const { shippingAddress, paymentMethod, couponCode = "" } = req.body;
 
-    const user = await User.findById(req.user.id).populate("cart.product");
+    const user = await User.findById(req.user.id).populate("cart.product").session(session);
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      fail(404, "User not found");
     }
 
     if (!user.cart.length) {
-      return res.status(400).json({ message: "Cart is empty" });
+      fail(400, "Cart is empty");
+    }
+
+    const hasUnavailableItem = user.cart.some((item) => !item.product?._id);
+    if (hasUnavailableItem) {
+      fail(400, "Some products in your cart are unavailable. Please update your cart and try again.");
+    }
+
+    for (const item of user.cart) {
+      if (item.quantity > item.product.stock) {
+        fail(400, `${item.product.name} has only ${item.product.stock} unit(s) left in stock`);
+      }
     }
 
     const subtotal = user.cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
@@ -23,7 +46,18 @@ export const placeOrder = async (req, res) => {
     const discount = normalizedCoupon === "LUXE10" ? Math.round(subtotal * 0.1) : 0;
     const total = Math.max(0, subtotal + deliveryCharge - discount);
 
-    const order = await Order.create({
+    for (const item of user.cart) {
+      const updateResult = await Product.updateOne(
+        { _id: item.product._id, stock: { $gte: item.quantity } },
+        { $inc: { stock: -item.quantity } },
+        { session }
+      );
+      if (updateResult.modifiedCount !== 1) {
+        fail(400, `${item.product.name} is out of stock. Please refresh and try again.`);
+      }
+    }
+
+    const [order] = await Order.create([{
       customer: user._id,
       orderId: createOrderCode(),
       items: user.cart.map((item) => ({
@@ -40,10 +74,12 @@ export const placeOrder = async (req, res) => {
       discount,
       total,
       couponCode: normalizedCoupon,
-    });
+    }], { session });
 
     user.cart = [];
-    await user.save();
+    await user.save({ session });
+    await session.commitTransaction();
+    transactionCommitted = true;
 
     // Return success immediately so checkout is never blocked by email delivery.
     const responsePayload = {
@@ -79,7 +115,13 @@ export const placeOrder = async (req, res) => {
 
     return;
   } catch (error) {
-    return res.status(500).json({ message: "Failed to place order", error: error.message });
+    if (!transactionCommitted) {
+      await session.abortTransaction();
+    }
+    const status = error?.status || 500;
+    return res.status(status).json({ message: status === 500 ? "Failed to place order" : error.message, error: error.message });
+  } finally {
+    session.endSession();
   }
 };
 
