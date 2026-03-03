@@ -45,25 +45,39 @@ export const placeOrder = async (req, res) => {
     user.cart = [];
     await user.save();
 
-    let email = { status: "skipped", message: "Email transport not configured" };
+    // Return success immediately so checkout is never blocked by email delivery.
+    const responsePayload = {
+      ...order.toObject(),
+      email: {
+        status: "queued",
+        message: "Order placed successfully. Confirmation email will be attempted in background.",
+      },
+    };
+    res.status(201).json(responsePayload);
 
-    // Email is best-effort; order should still succeed if email provider is unavailable.
-    try {
-      const mailResult = await sendOrderConfirmationEmail({
-        to: user.email,
-        customerName: user.name,
-        order,
-      });
+    // Best-effort async email notification after response.
+    setImmediate(async () => {
+      try {
+        const mailResult = await sendOrderConfirmationEmail({
+          to: user.email,
+          customerName: user.name,
+          order,
+        });
 
-      email = mailResult?.sent
-        ? { status: "sent", message: "Confirmation email sent successfully" }
-        : { status: mailResult?.skipped ? "skipped" : "failed", message: mailResult?.message || "Order confirmation email failed" };
-    } catch (emailError) {
-      console.error("Order email failed:", emailError.message);
-      email = { status: "failed", message: "Order placed, but confirmation email failed" };
-    }
+        if (mailResult?.sent) {
+          console.log(`Order email sent: orderId=${order.orderId}, to=${user.email}`);
+          return;
+        }
 
-    return res.status(201).json({ ...order.toObject(), email });
+        console.warn(
+          `Order email not sent: orderId=${order.orderId}, reason=${mailResult?.message || "unknown"}`
+        );
+      } catch (emailError) {
+        console.error(`Order email failed: orderId=${order.orderId}`, emailError.message);
+      }
+    });
+
+    return;
   } catch (error) {
     return res.status(500).json({ message: "Failed to place order", error: error.message });
   }
