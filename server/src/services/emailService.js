@@ -76,8 +76,55 @@ const getTransporter = async () => {
   return cachedTransporter;
 };
 
+const sendViaResend = async ({ to, subject, htmlContent, textContent }) => {
+  const apiKey = (process.env.RESEND_API_KEY || "").trim();
+  if (!apiKey) {
+    return { sent: false, skipped: true, message: "Resend API key is not configured" };
+  }
+
+  const from = process.env.EMAIL_FROM || "LUMEHEAVEN <onboarding@resend.dev>";
+
+  try {
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from,
+        to: [to],
+        subject,
+        html: htmlContent,
+        text: textContent,
+      }),
+    });
+
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const apiMessage =
+        payload?.message || payload?.error || `Resend request failed with status ${response.status}`;
+      return { sent: false, skipped: false, message: apiMessage };
+    }
+
+    return { sent: true, skipped: false, messageId: payload?.id };
+  } catch (error) {
+    return { sent: false, skipped: false, message: error.message || "Resend request failed" };
+  }
+};
+
 export const sendEmail = async ({ to, subject, htmlContent, textContent }) => {
   try {
+    if (process.env.RESEND_API_KEY) {
+      const resendResult = await sendViaResend({ to, subject, htmlContent, textContent });
+      if (resendResult?.sent) {
+        console.log(`Email sent successfully via Resend: messageId=${resendResult.messageId || "n/a"}, to=${to}`);
+      } else {
+        console.error(`Resend email error: ${resendResult?.message || "Unknown error"}`);
+      }
+      return resendResult;
+    }
+
     const transporter = await getTransporter();
     if (!transporter) {
       return { sent: false, skipped: true, message: "Email transport is not configured" };

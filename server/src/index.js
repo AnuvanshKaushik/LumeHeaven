@@ -26,10 +26,13 @@ const logConfigurationWarnings = () => {
   const emailUser = process.env.EMAIL_USER || process.env.SMTP_USER;
   const emailPass = process.env.EMAIL_PASS || process.env.SMTP_PASS;
   const emailHost = process.env.EMAIL_HOST || process.env.SMTP_HOST;
+  const resendApiKey = process.env.RESEND_API_KEY;
+  const hasSmtpConfig = Boolean(emailUser && emailPass && emailHost);
+  const hasResendConfig = Boolean(resendApiKey);
 
-  if (!emailUser || !emailPass || !emailHost) {
+  if (!hasSmtpConfig && !hasResendConfig) {
     console.warn(
-      "Email configuration warning: set EMAIL_HOST, EMAIL_USER and EMAIL_PASS to enable newsletter/order emails."
+      "Email configuration warning: set RESEND_API_KEY (recommended) or EMAIL_HOST, EMAIL_USER and EMAIL_PASS to enable newsletter/order emails."
     );
   }
 
