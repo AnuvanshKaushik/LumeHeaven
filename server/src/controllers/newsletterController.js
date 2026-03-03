@@ -20,18 +20,21 @@ export const subscribeNewsletter = async (req, res) => {
 
     await Newsletter.create({ email });
 
-    const mail = await sendNewsletterWelcomeEmail({ to: email });
-    if (!mail.sent) {
-      console.error("Newsletter confirmation email failed:", mail.message);
-      return res.status(201).json({
-        message: "Subscribed successfully, but confirmation email could not be delivered",
-        emailStatus: mail.skipped ? "skipped" : "failed",
-      });
-    }
+    // Do not block API response on email provider/network delays.
+    setImmediate(async () => {
+      try {
+        const mail = await sendNewsletterWelcomeEmail({ to: email });
+        if (!mail?.sent) {
+          console.error("Newsletter confirmation email failed:", mail?.message || "unknown");
+        }
+      } catch (mailError) {
+        console.error("Newsletter confirmation email failed:", mailError.message);
+      }
+    });
 
     return res.status(201).json({
       message: "Subscribed successfully to LUMEHEAVEN newsletter",
-      emailStatus: "sent",
+      emailStatus: "queued",
     });
   } catch (error) {
     if (error?.code === 11000) {

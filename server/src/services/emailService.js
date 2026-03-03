@@ -29,9 +29,9 @@ const createTransporter = () => {
     return nodemailer.createTransport({
       service: resolvedService,
       auth: { user, pass },
-      connectionTimeout: Number(process.env.SMTP_CONNECTION_TIMEOUT_MS || 8000),
-      greetingTimeout: Number(process.env.SMTP_GREETING_TIMEOUT_MS || 8000),
-      socketTimeout: Number(process.env.SMTP_SOCKET_TIMEOUT_MS || 10000),
+      connectionTimeout: Number(process.env.SMTP_CONNECTION_TIMEOUT_MS || 3000),
+      greetingTimeout: Number(process.env.SMTP_GREETING_TIMEOUT_MS || 3000),
+      socketTimeout: Number(process.env.SMTP_SOCKET_TIMEOUT_MS || 5000),
     });
   }
 
@@ -46,9 +46,9 @@ const createTransporter = () => {
     secure: port === 465,
     requireTLS: port === 587,
     auth: { user, pass },
-    connectionTimeout: Number(process.env.SMTP_CONNECTION_TIMEOUT_MS || 8000),
-    greetingTimeout: Number(process.env.SMTP_GREETING_TIMEOUT_MS || 8000),
-    socketTimeout: Number(process.env.SMTP_SOCKET_TIMEOUT_MS || 10000),
+    connectionTimeout: Number(process.env.SMTP_CONNECTION_TIMEOUT_MS || 3000),
+    greetingTimeout: Number(process.env.SMTP_GREETING_TIMEOUT_MS || 3000),
+    socketTimeout: Number(process.env.SMTP_SOCKET_TIMEOUT_MS || 5000),
   });
 };
 
@@ -114,17 +114,7 @@ const sendViaResend = async ({ to, subject, htmlContent, textContent }) => {
 };
 
 export const sendEmail = async ({ to, subject, htmlContent, textContent }) => {
-  try {
-    if (process.env.RESEND_API_KEY) {
-      const resendResult = await sendViaResend({ to, subject, htmlContent, textContent });
-      if (resendResult?.sent) {
-        console.log(`Email sent successfully via Resend: messageId=${resendResult.messageId || "n/a"}, to=${to}`);
-      } else {
-        console.error(`Resend email error: ${resendResult?.message || "Unknown error"}`);
-      }
-      return resendResult;
-    }
-
+  const sendViaSmtp = async () => {
     const transporter = await getTransporter();
     if (!transporter) {
       return { sent: false, skipped: true, message: "Email transport is not configured" };
@@ -144,8 +134,44 @@ export const sendEmail = async ({ to, subject, htmlContent, textContent }) => {
       text: textContent,
     });
 
-    console.log(`Email sent successfully: messageId=${info.messageId}, to=${to}`);
+    console.log(`Email sent successfully via SMTP: messageId=${info.messageId}, to=${to}`);
     return { sent: true, skipped: false, messageId: info.messageId };
+  };
+
+  try {
+    const provider = String(process.env.EMAIL_PROVIDER || "auto")
+      .trim()
+      .toLowerCase();
+    const canUseResend = Boolean((process.env.RESEND_API_KEY || "").trim());
+    const allowSmtpFallback = String(process.env.EMAIL_FALLBACK_TO_SMTP || "false")
+      .trim()
+      .toLowerCase() === "true";
+
+    if (provider !== "smtp" && canUseResend) {
+      const resendResult = await sendViaResend({ to, subject, htmlContent, textContent });
+      if (resendResult?.sent) {
+        console.log(`Email sent successfully via Resend: messageId=${resendResult.messageId || "n/a"}, to=${to}`);
+        return resendResult;
+      }
+
+      console.error(`Resend email error: ${resendResult?.message || "Unknown error"}`);
+      if (provider === "resend" || !allowSmtpFallback) {
+        return resendResult;
+      }
+
+      const smtpFallback = await sendViaSmtp();
+      if (smtpFallback?.sent) {
+        return smtpFallback;
+      }
+
+      return {
+        sent: false,
+        skipped: Boolean(resendResult?.skipped && smtpFallback?.skipped),
+        message: `Resend failed (${resendResult?.message || "unknown"}); SMTP failed (${smtpFallback?.message || "unknown"})`,
+      };
+    }
+
+    return await sendViaSmtp();
   } catch (error) {
     console.error("Email sending error:", error);
     return { sent: false, skipped: false, message: error.message || "Email sending failed" };

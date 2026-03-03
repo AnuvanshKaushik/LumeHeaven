@@ -1,7 +1,6 @@
 import cors from "cors";
 import dotenv from "dotenv";
 import express from "express";
-import session from "express-session";
 import morgan from "morgan";
 import passport from "passport";
 import path from "path";
@@ -68,20 +67,7 @@ app.use(
   })
 );
 app.use(express.json());
-app.use(
-  session({
-    secret: process.env.SESSION_SECRET || process.env.JWT_SECRET || "lumeheaven-session-secret",
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      secure: false,
-      sameSite: "lax",
-      maxAge: 1000 * 60 * 60,
-    },
-  })
-);
 app.use(passport.initialize());
-app.use(passport.session());
 app.use(morgan("dev"));
 app.use("/uploads", express.static(uploadsRoot));
 
