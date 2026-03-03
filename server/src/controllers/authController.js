@@ -32,6 +32,7 @@ const buildAuthResponse = (user, status = 200) => ({
 
 export const upsertGoogleUserFromProfile = async (profile) => {
   const email = String(profile?.email || "").toLowerCase();
+  const googleId = String(profile?.googleId || profile?.sub || "").trim();
   if (!email) {
     throw new Error("Google profile is missing email");
   }
@@ -41,7 +42,7 @@ export const upsertGoogleUserFromProfile = async (profile) => {
     user = await User.create({
       name: profile.name || email.split("@")[0],
       email,
-      googleId: profile.googleId || profile.sub || "",
+      ...(googleId ? { googleId } : {}),
       profilePicture: profile.picture || "",
       role: "customer",
     });
@@ -50,7 +51,7 @@ export const upsertGoogleUserFromProfile = async (profile) => {
 
   const needsSave = !user.googleId || (!user.profilePicture && profile.picture);
   if (needsSave) {
-    user.googleId = user.googleId || profile.googleId || profile.sub || user.googleId;
+    user.googleId = user.googleId || googleId || user.googleId;
     user.profilePicture = user.profilePicture || profile.picture || "";
     await user.save();
   }
@@ -89,6 +90,17 @@ export const registerCustomer = async (req, res) => {
     const auth = buildAuthResponse(user, 201);
     return res.status(auth.status).json(auth.payload);
   } catch (error) {
+    if (error?.code === 11000) {
+      const dupField = Object.keys(error?.keyPattern || {})[0];
+      if (dupField === "email") {
+        return res.status(409).json({ message: "Email already in use" });
+      }
+      if (dupField === "googleId") {
+        return res.status(500).json({
+          message: "Registration failed due to user index conflict. Please contact support or retry.",
+        });
+      }
+    }
     return res.status(500).json({ message: "Registration failed", error: error.message });
   }
 };
