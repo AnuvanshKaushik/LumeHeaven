@@ -56,11 +56,14 @@ const CustomerAuth = () => {
     setLoading(true);
 
     try {
+      const normalizedEmail = form.email.trim().toLowerCase();
+      const normalizedPassword = form.password;
+      const normalizedName = form.name.trim();
       const endpoint = mode === "register" ? "/auth/register" : "/auth/login";
       const payload =
         mode === "register"
-          ? form
-          : { email: form.email, password: form.password, role: "customer" };
+          ? { name: normalizedName, email: normalizedEmail, password: normalizedPassword }
+          : { email: normalizedEmail, password: normalizedPassword, role: "customer" };
 
       const { data } = await api.post(endpoint, payload);
       login(data);
@@ -82,10 +85,15 @@ const CustomerAuth = () => {
         <h2>Customer {mode === "login" ? "Login" : "Register"}</h2>
         <p>Access curated products and discover elegant collections.</p>
         <div className="tab-row">
-          <button className={`tab ${mode === "login" ? "active" : ""}`} onClick={() => setMode("login")}>
+          <button
+            type="button"
+            className={`tab ${mode === "login" ? "active" : ""}`}
+            onClick={() => setMode("login")}
+          >
             Login
           </button>
           <button
+            type="button"
             className={`tab ${mode === "register" ? "active" : ""}`}
             onClick={() => setMode("register")}
           >

@@ -60,13 +60,19 @@ export const upsertGoogleUserFromProfile = async (profile) => {
 
 export const registerCustomer = async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const name = String(req.body?.name || "").trim();
+    const email = String(req.body?.email || "").trim().toLowerCase();
+    const password = String(req.body?.password || "");
 
     if (!name || !email || !password) {
       return res.status(400).json({ message: "Name, email and password are required" });
     }
 
-    const existingUser = await User.findOne({ email: email.toLowerCase() });
+    if (password.length < 6) {
+      return res.status(400).json({ message: "Password must be at least 6 characters" });
+    }
+
+    const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(409).json({ message: "Email already in use" });
     }
@@ -75,7 +81,7 @@ export const registerCustomer = async (req, res) => {
 
     const user = await User.create({
       name,
-      email: email.toLowerCase(),
+      email,
       password: hashedPassword,
       role: "customer",
     });
@@ -89,13 +95,19 @@ export const registerCustomer = async (req, res) => {
 
 export const login = async (req, res) => {
   try {
-    const { email, password, role } = req.body;
+    const email = String(req.body?.email || "").trim().toLowerCase();
+    const password = String(req.body?.password || "");
+    const role = String(req.body?.role || "customer").trim().toLowerCase();
 
-    if (!email || !password || !role) {
-      return res.status(400).json({ message: "Email, password and role are required" });
+    if (!email || !password) {
+      return res.status(400).json({ message: "Email and password are required" });
     }
 
-    const user = await User.findOne({ email: email.toLowerCase() });
+    if (!["customer", "manager"].includes(role)) {
+      return res.status(400).json({ message: "Invalid role value" });
+    }
+
+    const user = await User.findOne({ email });
 
     if (!user) {
       return res.status(401).json({ message: "Invalid credentials" });
