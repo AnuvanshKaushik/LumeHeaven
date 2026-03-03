@@ -9,6 +9,7 @@ const CartPage = () => {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [coupon, setCoupon] = useState("");
+  const [pendingQtyByProduct, setPendingQtyByProduct] = useState({});
   const navigate = useNavigate();
 
   const load = async () => {
@@ -27,11 +28,29 @@ const CartPage = () => {
   }, []);
 
   const updateQty = async (productId, quantity) => {
+    const nextQty = Math.max(1, Number(quantity));
+    const previousItems = items;
+
+    // Optimistic UI update so quantity buttons feel instant.
+    setItems((prev) =>
+      prev.map((entry) =>
+        entry.product._id === productId ? { ...entry, quantity: nextQty } : entry
+      )
+    );
+    setPendingQtyByProduct((prev) => ({ ...prev, [productId]: true }));
+
     try {
-      const { data } = await api.put("/cart", { productId, quantity });
+      const { data } = await api.put("/cart", { productId, quantity: nextQty });
       setItems(data);
     } catch (error) {
+      setItems(previousItems);
       toast.error(error?.response?.data?.message || "Failed to update quantity");
+    } finally {
+      setPendingQtyByProduct((prev) => {
+        const next = { ...prev };
+        delete next[productId];
+        return next;
+      });
     }
   };
 
@@ -80,11 +99,19 @@ const CartPage = () => {
                   <p>Rs.{item.product.price.toLocaleString()}</p>
                 </div>
                 <div className="qty-row">
-                  <button className="ripple" onClick={() => updateQty(item.product._id, Math.max(1, item.quantity - 1))}>
+                  <button
+                    className="ripple"
+                    disabled={Boolean(pendingQtyByProduct[item.product._id])}
+                    onClick={() => updateQty(item.product._id, Math.max(1, item.quantity - 1))}
+                  >
                     -
                   </button>
                   <span>{item.quantity}</span>
-                  <button className="ripple" onClick={() => updateQty(item.product._id, item.quantity + 1)}>
+                  <button
+                    className="ripple"
+                    disabled={Boolean(pendingQtyByProduct[item.product._id])}
+                    onClick={() => updateQty(item.product._id, item.quantity + 1)}
+                  >
                     +
                   </button>
                 </div>

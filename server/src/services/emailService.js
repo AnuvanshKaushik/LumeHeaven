@@ -23,9 +23,11 @@ const createTransporter = () => {
     return null;
   }
 
-  if (service) {
+  const resolvedService = service || (isGmail ? "gmail" : "");
+
+  if (resolvedService) {
     return nodemailer.createTransport({
-      service,
+      service: resolvedService,
       auth: { user, pass },
       connectionTimeout: Number(process.env.SMTP_CONNECTION_TIMEOUT_MS || 8000),
       greetingTimeout: Number(process.env.SMTP_GREETING_TIMEOUT_MS || 8000),
@@ -65,8 +67,9 @@ const getTransporter = async () => {
       smtpVerified = true;
       console.log("SMTP connection status: ready");
     } catch (error) {
-      console.error("SMTP connection status: failed", error);
-      throw new Error("SMTP connection verification failed");
+      // Some hosts fail verify() in cloud environments but still allow sendMail().
+      console.warn("SMTP verification failed; continuing with best-effort send", error.message);
+      smtpVerified = true;
     }
   }
 
