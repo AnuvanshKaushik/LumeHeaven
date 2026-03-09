@@ -96,6 +96,16 @@ body {
   left: 19vw;
 }
 
+.route-transition-spark-c {
+  top: 27vh;
+  left: 42vw;
+}
+
+.route-transition-spark-d {
+  top: 35vh;
+  right: 34vw;
+}
+
 a {
   color: inherit;
   text-decoration: none;
