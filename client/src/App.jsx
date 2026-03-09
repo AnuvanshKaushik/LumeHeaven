@@ -82,27 +82,45 @@ const AnimatedRoutes = () => {
     }
 
     const now = ctx.currentTime;
+    const masterGain = ctx.createGain();
+    const lowPass = ctx.createBiquadFilter();
+    const shimmerEcho = ctx.createDelay();
+    const echoGain = ctx.createGain();
+
+    masterGain.gain.value = 0.26;
+    lowPass.type = "lowpass";
+    lowPass.frequency.value = 1800;
+    lowPass.Q.value = 0.7;
+    shimmerEcho.delayTime.value = 0.09;
+    echoGain.gain.value = 0.12;
+
+    masterGain.connect(lowPass);
+    lowPass.connect(ctx.destination);
+    lowPass.connect(shimmerEcho);
+    shimmerEcho.connect(echoGain);
+    echoGain.connect(lowPass);
+
     const notes = [
-      { frequency: 1480, offset: 0, gain: 0.022 },
-      { frequency: 1760, offset: 0.04, gain: 0.02 },
-      { frequency: 2093, offset: 0.085, gain: 0.017 },
+      { frequency: 784, offset: 0, gain: 0.015, type: "triangle", duration: 0.34 },
+      { frequency: 1047, offset: 0.06, gain: 0.012, type: "sine", duration: 0.3 },
+      { frequency: 1319, offset: 0.115, gain: 0.009, type: "sine", duration: 0.24 },
     ];
 
-    notes.forEach(({ frequency, offset, gain }) => {
+    notes.forEach(({ frequency, offset, gain, type, duration }) => {
       const oscillator = ctx.createOscillator();
       const envelope = ctx.createGain();
 
-      oscillator.type = "sine";
+      oscillator.type = type;
       oscillator.frequency.setValueAtTime(frequency, now + offset);
 
       envelope.gain.setValueAtTime(0.0001, now + offset);
-      envelope.gain.exponentialRampToValueAtTime(gain, now + offset + 0.02);
-      envelope.gain.exponentialRampToValueAtTime(0.0001, now + offset + 0.24);
+      envelope.gain.exponentialRampToValueAtTime(gain, now + offset + 0.03);
+      envelope.gain.exponentialRampToValueAtTime(0.0001, now + offset + duration);
 
       oscillator.connect(envelope);
-      envelope.connect(ctx.destination);
+      envelope.connect(masterGain);
       oscillator.start(now + offset);
-      oscillator.stop(now + offset + 0.26);
+      oscillator.stop(now + offset + duration + 0.03);
     });
   }, [routeKey]);
 
@@ -120,36 +138,50 @@ const AnimatedRoutes = () => {
           className="route-transition-glow"
           aria-hidden="true"
           initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: [0, 0.35, 0], scale: [0.95, 1.08, 1.12] }}
-          transition={{ duration: 0.65, ease: "easeOut" }}
+          animate={{ opacity: [0, 0.55, 0], scale: [0.95, 1.1, 1.16] }}
+          transition={{ duration: 0.72, ease: "easeOut" }}
         />
         <motion.span
           className="route-transition-spark route-transition-spark-a"
           aria-hidden="true"
-          initial={{ opacity: 0, y: 8, scale: 0.6 }}
-          animate={{ opacity: [0, 0.85, 0], y: [8, -6, -12], scale: [0.6, 1, 0.8] }}
-          transition={{ duration: 0.6, delay: 0.05, ease: "easeOut" }}
+          initial={{ opacity: 0, y: 10, scale: 0.55 }}
+          animate={{ opacity: [0, 1, 0], y: [10, -7, -15], scale: [0.55, 1.2, 0.86] }}
+          transition={{ duration: 0.72, delay: 0.03, ease: "easeOut" }}
         />
         <motion.span
           className="route-transition-spark route-transition-spark-b"
           aria-hidden="true"
-          initial={{ opacity: 0, y: 6, scale: 0.5 }}
-          animate={{ opacity: [0, 0.8, 0], y: [6, -4, -10], scale: [0.5, 0.95, 0.75] }}
-          transition={{ duration: 0.6, delay: 0.12, ease: "easeOut" }}
+          initial={{ opacity: 0, y: 8, scale: 0.5 }}
+          animate={{ opacity: [0, 0.98, 0], y: [8, -6, -13], scale: [0.5, 1.12, 0.8] }}
+          transition={{ duration: 0.74, delay: 0.08, ease: "easeOut" }}
         />
         <motion.span
           className="route-transition-spark route-transition-spark-c"
           aria-hidden="true"
-          initial={{ opacity: 0, y: 7, scale: 0.55 }}
-          animate={{ opacity: [0, 0.75, 0], y: [7, -5, -11], scale: [0.55, 0.9, 0.72] }}
-          transition={{ duration: 0.58, delay: 0.16, ease: "easeOut" }}
+          initial={{ opacity: 0, y: 9, scale: 0.52 }}
+          animate={{ opacity: [0, 0.92, 0], y: [9, -5, -12], scale: [0.52, 1.08, 0.78] }}
+          transition={{ duration: 0.7, delay: 0.13, ease: "easeOut" }}
         />
         <motion.span
           className="route-transition-spark route-transition-spark-d"
           aria-hidden="true"
-          initial={{ opacity: 0, y: 7, scale: 0.52 }}
-          animate={{ opacity: [0, 0.72, 0], y: [7, -3, -9], scale: [0.52, 0.88, 0.7] }}
-          transition={{ duration: 0.62, delay: 0.2, ease: "easeOut" }}
+          initial={{ opacity: 0, y: 8, scale: 0.5 }}
+          animate={{ opacity: [0, 0.9, 0], y: [8, -4, -10], scale: [0.5, 1.04, 0.76] }}
+          transition={{ duration: 0.72, delay: 0.17, ease: "easeOut" }}
+        />
+        <motion.span
+          className="route-transition-spark route-transition-spark-e"
+          aria-hidden="true"
+          initial={{ opacity: 0, y: 10, scale: 0.5 }}
+          animate={{ opacity: [0, 0.9, 0], y: [10, -6, -14], scale: [0.5, 1.08, 0.78] }}
+          transition={{ duration: 0.74, delay: 0.2, ease: "easeOut" }}
+        />
+        <motion.span
+          className="route-transition-spark route-transition-spark-f"
+          aria-hidden="true"
+          initial={{ opacity: 0, y: 9, scale: 0.48 }}
+          animate={{ opacity: [0, 0.85, 0], y: [9, -5, -11], scale: [0.48, 1.02, 0.74] }}
+          transition={{ duration: 0.68, delay: 0.24, ease: "easeOut" }}
         />
         <Routes location={location}>
           <Route path="/" element={<Home />} />

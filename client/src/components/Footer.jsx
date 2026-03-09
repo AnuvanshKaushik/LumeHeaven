@@ -11,22 +11,20 @@ const Footer = () => {
         </div>
         <div>
           <h4>Contact</h4>
-          <p>Email: care@lumeheaven.com</p>
-          <p>Phone: +91 90000 11111</p>
-          <p>Mumbai, India</p>
+          <p>Email:lumeheaven@gmail.com</p>
+          <p>Phone: +91 9971715822</p>
+          <p>Delhi, India</p>
         </div>
         <div>
           <h4>Follow</h4>
           <div className="social-row">
-            <a href="#" aria-label="Instagram">
-              IG
+            <a href="https://www.instagram.com/lumeheaven/" aria-label="Instagram">
+              Instagram
             </a>
-            <a href="#" aria-label="Facebook">
-              FB
+            {/* <a href="#" aria-label="Facebook">
             </a>
             <a href="#" aria-label="Pinterest">
-              PT
-            </a>
+            </a> */}
           </div>
         </div>
         <div>

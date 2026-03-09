@@ -101,8 +101,8 @@ const Navbar = () => {
           </div>
           {!user && (
             <>
-              <Link to="/customer-auth">Customer</Link>
-              <Link to="/manager-login">Manager</Link>
+              <Link to="/customer-auth">Customer Login</Link>
+              <Link to="/manager-login">Manager Login</Link>
             </>
           )}
           {user?.role === "customer" && (

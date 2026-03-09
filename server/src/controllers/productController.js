@@ -1,8 +1,10 @@
 import Category from "../models/Category.js";
+import Order from "../models/Order.js";
 import Product from "../models/Product.js";
 
-const mapProductWithSubcategory = (productDoc) => {
+const mapProductWithSubcategory = (productDoc, soldCountMap = new Map()) => {
   const product = productDoc.toObject ? productDoc.toObject() : productDoc;
+  const productId = product._id?.toString?.() || "";
   const subcategoryId = product.subcategory?.toString();
   const subcategory =
     subcategoryId && product.category?.subcategories
@@ -13,11 +15,31 @@ const mapProductWithSubcategory = (productDoc) => {
     ...product,
     imageUrl: product.imageUrl || product.images?.[0] || "",
     images: product.images?.length ? product.images : product.imageUrl ? [product.imageUrl] : [],
+    soldCount: soldCountMap.get(productId) || 0,
     subcategory: subcategoryId || null,
     subcategoryDetails: subcategory
       ? { _id: subcategory._id, name: subcategory.name, slug: subcategory.slug }
       : null,
   };
+};
+
+const buildSoldCountMap = async (productIds) => {
+  if (!productIds?.length) {
+    return new Map();
+  }
+
+  const rows = await Order.aggregate([
+    { $unwind: "$items" },
+    { $match: { "items.product": { $in: productIds } } },
+    {
+      $group: {
+        _id: "$items.product",
+        soldCount: { $sum: "$items.quantity" },
+      },
+    },
+  ]);
+
+  return new Map(rows.map((row) => [row._id.toString(), row.soldCount || 0]));
 };
 
 const normalizeImages = ({ images, imageUrl }) => {
@@ -144,7 +166,10 @@ const fetchFilteredProducts = async ({ filter, sort }) => {
     .populate("category", "name slug subcategories")
     .sort(sortMap[sort] || { createdAt: -1 });
 
-  return products.map(mapProductWithSubcategory);
+  const productIds = products.map((product) => product._id);
+  const soldCountMap = await buildSoldCountMap(productIds);
+
+  return products.map((product) => mapProductWithSubcategory(product, soldCountMap));
 };
 
 export const getProducts = async (req, res) => {
@@ -206,7 +231,8 @@ export const getProductById = async (req, res) => {
       return res.status(404).json({ message: "Product not found" });
     }
 
-    return res.json(mapProductWithSubcategory(product));
+    const soldCountMap = await buildSoldCountMap([product._id]);
+    return res.json(mapProductWithSubcategory(product, soldCountMap));
   } catch (error) {
     return res.status(500).json({ message: "Failed to fetch product", error: error.message });
   }
@@ -247,7 +273,7 @@ export const createProduct = async (req, res) => {
     });
 
     const populated = await product.populate("category", "name slug subcategories");
-    return res.status(201).json(mapProductWithSubcategory(populated));
+    return res.status(201).json(mapProductWithSubcategory(populated, new Map()));
   } catch (error) {
     return res.status(500).json({ message: "Failed to create product", error: error.message });
   }
@@ -307,7 +333,7 @@ export const updateProduct = async (req, res) => {
       { new: true, runValidators: true }
     ).populate("category", "name slug subcategories");
 
-    return res.json(mapProductWithSubcategory(updatedProduct));
+    return res.json(mapProductWithSubcategory(updatedProduct, new Map()));
   } catch (error) {
     return res.status(500).json({ message: "Failed to update product", error: error.message });
   }

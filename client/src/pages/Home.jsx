@@ -19,6 +19,9 @@ const fadeUp = {
   show: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.5 } },
 };
 
+const getSoldUnits = (product) =>
+  Number(product?.soldCount ?? product?.totalSold ?? product?.unitsSold ?? product?.salesCount ?? 0);
+
 const Home = () => {
   const [categories, setCategories] = useState([]);
   const [products, setProducts] = useState([]);
@@ -42,7 +45,18 @@ const Home = () => {
 
   const featured = useMemo(() => products.slice(0, 8), [products]);
   const bestSellers = useMemo(
-    () => [...products].sort((a, b) => Number(b.rating || 0) - Number(a.rating || 0)).slice(0, 4),
+    () =>
+      [...products]
+        .sort((a, b) => {
+          const salesDifference = getSoldUnits(b) - getSoldUnits(a);
+          if (salesDifference !== 0) return salesDifference;
+
+          const ratingDifference = Number(b.rating || 0) - Number(a.rating || 0);
+          if (ratingDifference !== 0) return ratingDifference;
+
+          return Number(b.numReviews || 0) - Number(a.numReviews || 0);
+        })
+        .slice(0, 4),
     [products]
   );
 
@@ -146,6 +160,7 @@ const Home = () => {
               <div>
                 <h3>{item.name}</h3>
                 <p className="price">Rs.{Number(item.price).toLocaleString()}</p>
+                <p>{getSoldUnits(item)} sold</p>
                 <p>{Number(item.rating || 0).toFixed(1)} / 5 rated</p>
                 <Link className="btn btn-light btn-sm ripple" to={`/products/${item._id}`}>
                   Quick Shop
