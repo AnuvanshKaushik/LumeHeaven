@@ -142,6 +142,27 @@ const AnimatedRoutes = () => {
           transition={{ duration: 0.72, ease: "easeOut" }}
         />
         <motion.span
+          className="route-transition-light-flare"
+          aria-hidden="true"
+          initial={{ opacity: 0, scale: 0.94 }}
+          animate={{ opacity: [0, 0.95, 0], scale: [0.94, 1.06, 1.12] }}
+          transition={{ duration: 0.7, ease: "easeOut" }}
+        />
+        <motion.span
+          className="route-transition-light-ring route-transition-light-ring-a"
+          aria-hidden="true"
+          initial={{ opacity: 0, scale: 0.75 }}
+          animate={{ opacity: [0, 0.75, 0], scale: [0.75, 1.08, 1.22] }}
+          transition={{ duration: 0.8, delay: 0.06, ease: "easeOut" }}
+        />
+        <motion.span
+          className="route-transition-light-ring route-transition-light-ring-b"
+          aria-hidden="true"
+          initial={{ opacity: 0, scale: 0.7 }}
+          animate={{ opacity: [0, 0.65, 0], scale: [0.7, 1.04, 1.18] }}
+          transition={{ duration: 0.78, delay: 0.12, ease: "easeOut" }}
+        />
+        <motion.span
           className="route-transition-spark route-transition-spark-a"
           aria-hidden="true"
           initial={{ opacity: 0, y: 10, scale: 0.55 }}
