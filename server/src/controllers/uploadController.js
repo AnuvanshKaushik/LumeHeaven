@@ -1,13 +1,7 @@
-import fs from "fs/promises";
-import path from "path";
-import { fileURLToPath } from "url";
 import crypto from "crypto";
 import multer from "multer";
 import sharp from "sharp";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const uploadDirectory = path.resolve(__dirname, "../../uploads/products");
+import { isCloudinaryReady, uploadBufferToCloudinary } from "../services/cloudinaryService.js";
 
 const memoryStorage = multer.memoryStorage();
 
@@ -46,23 +40,29 @@ const optimizeImage = async (buffer) => {
 
 export const uploadProductImages = async (req, res) => {
   try {
+    if (!isCloudinaryReady()) {
+      return res.status(500).json({ message: "Cloudinary is not configured on server" });
+    }
+
     const files = req.files || [];
     if (!files.length) {
       return res.status(400).json({ message: "No images uploaded" });
     }
 
-    await fs.mkdir(uploadDirectory, { recursive: true });
     const savedImages = [];
-    const baseUrl = `${req.protocol}://${req.get("host")}`;
 
     for (const file of files) {
       const optimized = await optimizeImage(file.buffer);
-      const fileName = `${Date.now()}-${crypto.randomUUID()}.webp`;
-      const absolutePath = path.join(uploadDirectory, fileName);
-      await fs.writeFile(absolutePath, optimized.buffer);
+      const publicId = `${Date.now()}-${crypto.randomUUID()}`;
+      const uploaded = await uploadBufferToCloudinary(optimized.buffer, {
+        folder: "lumeheaven/products",
+        format: "webp",
+        public_id: publicId,
+      });
 
       savedImages.push({
-        url: `${baseUrl}/uploads/products/${fileName}`,
+        url: uploaded.secure_url,
+        publicId: uploaded.public_id,
         width: optimized.width,
         height: optimized.height,
         size: optimized.size,

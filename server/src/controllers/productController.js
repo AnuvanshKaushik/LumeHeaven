@@ -1,8 +1,53 @@
 import Category from "../models/Category.js";
 import Order from "../models/Order.js";
 import Product from "../models/Product.js";
+import {
+  collectCloudinaryPublicIds,
+  deleteCloudinaryImages,
+} from "../services/cloudinaryService.js";
 
-const mapProductWithSubcategory = (productDoc, soldCountMap = new Map()) => {
+const getRequestBaseUrl = (req) => {
+  const forwardedProto = req.get("x-forwarded-proto");
+  const protocol = forwardedProto ? forwardedProto.split(",")[0].trim() : req.protocol;
+  return `${protocol}://${req.get("host")}`;
+};
+
+const extractUploadPath = (value) => {
+  const raw = String(value || "").trim();
+  if (!raw) {
+    return "";
+  }
+
+  if (raw.startsWith("/uploads/")) {
+    return raw;
+  }
+
+  try {
+    const parsed = new URL(raw);
+    if (parsed.pathname.startsWith("/uploads/")) {
+      return parsed.pathname;
+    }
+  } catch {
+    return raw;
+  }
+
+  return raw;
+};
+
+const toAbsoluteImageUrl = (value, req) => {
+  const normalizedPathOrUrl = extractUploadPath(value);
+  if (!normalizedPathOrUrl) {
+    return "";
+  }
+
+  if (normalizedPathOrUrl.startsWith("/uploads/")) {
+    return `${getRequestBaseUrl(req)}${normalizedPathOrUrl}`;
+  }
+
+  return normalizedPathOrUrl;
+};
+
+const mapProductWithSubcategory = (productDoc, req, soldCountMap = new Map()) => {
   const product = productDoc.toObject ? productDoc.toObject() : productDoc;
   const productId = product._id?.toString?.() || "";
   const subcategoryId = product.subcategory?.toString();
@@ -10,11 +55,22 @@ const mapProductWithSubcategory = (productDoc, soldCountMap = new Map()) => {
     subcategoryId && product.category?.subcategories
       ? product.category.subcategories.find((sub) => sub._id.toString() === subcategoryId)
       : null;
+  const normalizedImages =
+    (product.images || [])
+      .map((img) => toAbsoluteImageUrl(img, req))
+      .filter(Boolean);
+  const primaryImage = toAbsoluteImageUrl(product.imageUrl || normalizedImages[0] || "", req);
 
   return {
     ...product,
-    imageUrl: product.imageUrl || product.images?.[0] || "",
-    images: product.images?.length ? product.images : product.imageUrl ? [product.imageUrl] : [],
+    imageUrl: primaryImage,
+    images: normalizedImages.length ? normalizedImages : primaryImage ? [primaryImage] : [],
+    imageMeta: Array.isArray(product.imageMeta)
+      ? product.imageMeta.map((meta) => ({
+          ...meta,
+          url: toAbsoluteImageUrl(meta?.url || "", req),
+        }))
+      : [],
     soldCount: soldCountMap.get(productId) || 0,
     subcategory: subcategoryId || null,
     subcategoryDetails: subcategory
@@ -44,15 +100,16 @@ const buildSoldCountMap = async (productIds) => {
 
 const normalizeImages = ({ images, imageUrl }) => {
   const normalizedFromArray = Array.isArray(images)
-    ? images.map((img) => String(img || "").trim()).filter(Boolean)
+    ? images.map((img) => extractUploadPath(img)).filter(Boolean)
     : [];
 
   if (normalizedFromArray.length) {
     return normalizedFromArray;
   }
 
-  if (imageUrl && String(imageUrl).trim()) {
-    return [String(imageUrl).trim()];
+  const normalizedSingle = extractUploadPath(imageUrl);
+  if (normalizedSingle) {
+    return [normalizedSingle];
   }
 
   return [];
@@ -169,7 +226,7 @@ const fetchFilteredProducts = async ({ filter, sort }) => {
   const productIds = products.map((product) => product._id);
   const soldCountMap = await buildSoldCountMap(productIds);
 
-  return products.map((product) => mapProductWithSubcategory(product, soldCountMap));
+  return { products, soldCountMap };
 };
 
 export const getProducts = async (req, res) => {
@@ -188,8 +245,8 @@ export const getProducts = async (req, res) => {
       return res.json([]);
     }
 
-    const products = await fetchFilteredProducts({ filter, sort });
-    return res.json(products);
+    const { products, soldCountMap } = await fetchFilteredProducts({ filter, sort });
+    return res.json(products.map((product) => mapProductWithSubcategory(product, req, soldCountMap)));
   } catch (error) {
     return res.status(500).json({ message: "Failed to fetch products", error: error.message });
   }
@@ -216,8 +273,8 @@ export const getProductsByCategory = async (req, res) => {
       return res.status(404).json({ message: "Subcategory not found in this category" });
     }
 
-    const products = await fetchFilteredProducts({ filter, sort: req.query.sort || "newest" });
-    return res.json(products);
+    const { products, soldCountMap } = await fetchFilteredProducts({ filter, sort: req.query.sort || "newest" });
+    return res.json(products.map((product) => mapProductWithSubcategory(product, req, soldCountMap)));
   } catch (error) {
     return res.status(500).json({ message: "Failed to fetch category products", error: error.message });
   }
@@ -232,7 +289,7 @@ export const getProductById = async (req, res) => {
     }
 
     const soldCountMap = await buildSoldCountMap([product._id]);
-    return res.json(mapProductWithSubcategory(product, soldCountMap));
+    return res.json(mapProductWithSubcategory(product, req, soldCountMap));
   } catch (error) {
     return res.status(500).json({ message: "Failed to fetch product", error: error.message });
   }
@@ -264,7 +321,13 @@ export const createProduct = async (req, res) => {
       name: String(name).trim(),
       imageUrl: normalizedImages[0],
       images: normalizedImages,
-      imageMeta: Array.isArray(imageMeta) ? imageMeta : [],
+      imageMeta: Array.isArray(imageMeta)
+        ? imageMeta.map((meta) => ({
+            ...meta,
+            url: extractUploadPath(meta?.url || ""),
+            publicId: meta?.publicId ? String(meta.publicId) : "",
+          }))
+        : [],
       price: Number(price),
       category,
       subcategory: matchedSubcategory?._id || null,
@@ -273,7 +336,7 @@ export const createProduct = async (req, res) => {
     });
 
     const populated = await product.populate("category", "name slug subcategories");
-    return res.status(201).json(mapProductWithSubcategory(populated, new Map()));
+    return res.status(201).json(mapProductWithSubcategory(populated, req, new Map()));
   } catch (error) {
     return res.status(500).json({ message: "Failed to create product", error: error.message });
   }
@@ -317,13 +380,21 @@ export const updateProduct = async (req, res) => {
       return res.status(400).json({ message: "Selected subcategory does not belong to this category" });
     }
 
+    const nextImageMeta = Array.isArray(imageMeta)
+      ? imageMeta.map((meta) => ({
+          ...meta,
+          url: extractUploadPath(meta?.url || ""),
+          publicId: meta?.publicId ? String(meta.publicId) : "",
+        }))
+      : existingProduct.imageMeta;
+
     const updatedProduct = await Product.findByIdAndUpdate(
       id,
       {
         name: name !== undefined ? String(name).trim() : existingProduct.name,
         imageUrl: normalizedImages[0],
         images: normalizedImages,
-        imageMeta: Array.isArray(imageMeta) ? imageMeta : existingProduct.imageMeta,
+        imageMeta: nextImageMeta,
         price: price !== undefined ? Number(price) : existingProduct.price,
         category: targetCategoryId,
         subcategory: matchedSubcategory?._id || null,
@@ -333,7 +404,31 @@ export const updateProduct = async (req, res) => {
       { new: true, runValidators: true }
     ).populate("category", "name slug subcategories");
 
-    return res.json(mapProductWithSubcategory(updatedProduct, new Map()));
+    if (Array.isArray(imageMeta)) {
+      const previousCloudinaryIds = new Set(
+        collectCloudinaryPublicIds({
+          imageMeta: existingProduct.imageMeta,
+          images: existingProduct.images,
+        })
+      );
+      const nextCloudinaryIds = new Set(
+        collectCloudinaryPublicIds({
+          imageMeta: nextImageMeta,
+          images: normalizedImages,
+        })
+      );
+
+      const removedCloudinaryIds = Array.from(previousCloudinaryIds).filter((idValue) => !nextCloudinaryIds.has(idValue));
+      if (removedCloudinaryIds.length) {
+        try {
+          await deleteCloudinaryImages(removedCloudinaryIds);
+        } catch (cloudinaryError) {
+          console.warn("Cloudinary cleanup warning (updateProduct):", cloudinaryError.message);
+        }
+      }
+    }
+
+    return res.json(mapProductWithSubcategory(updatedProduct, req, new Map()));
   } catch (error) {
     return res.status(500).json({ message: "Failed to update product", error: error.message });
   }
@@ -341,11 +436,25 @@ export const updateProduct = async (req, res) => {
 
 export const deleteProduct = async (req, res) => {
   try {
-    const deletedProduct = await Product.findByIdAndDelete(req.params.id);
-
-    if (!deletedProduct) {
+    const product = await Product.findById(req.params.id);
+    if (!product) {
       return res.status(404).json({ message: "Product not found" });
     }
+
+    const cloudinaryIds = collectCloudinaryPublicIds({
+      imageMeta: product.imageMeta,
+      images: product.images,
+    });
+
+    if (cloudinaryIds.length) {
+      try {
+        await deleteCloudinaryImages(cloudinaryIds);
+      } catch (cloudinaryError) {
+        console.warn("Cloudinary cleanup warning (deleteProduct):", cloudinaryError.message);
+      }
+    }
+
+    await Product.findByIdAndDelete(req.params.id);
 
     return res.json({ message: "Product deleted" });
   } catch (error) {

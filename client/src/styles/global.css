@@ -15,6 +15,14 @@
   --ease-standard: cubic-bezier(0.2, 0.8, 0.2, 1);
   --duration-fast: 180ms;
   --duration-med: 300ms;
+  --route-glow-core: rgba(255, 234, 196, 0.56);
+  --route-glow-accent: rgba(245, 158, 11, 0.34);
+  --spark-core: rgba(255, 246, 222, 1);
+  --spark-mid: rgba(255, 206, 110, 0.86);
+  --spark-shadow: rgba(217, 119, 6, 0.72);
+  --card-hover-shadow: 0 26px 52px rgba(17, 24, 39, 0.28);
+  --card-hover-ring: rgba(217, 119, 6, 0.38);
+  --shine-sweep: linear-gradient(115deg, rgba(255, 255, 255, 0) 12%, rgba(255, 240, 210, 0.68) 48%, rgba(245, 158, 11, 0.24) 62%, rgba(255, 255, 255, 0) 88%);
 }
 
 :root[data-theme="dark"] {
@@ -31,6 +39,14 @@
   --border: #2a3347;
   --shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
   --shadow-lg: 0 24px 50px rgba(0, 0, 0, 0.45);
+  --route-glow-core: rgba(255, 255, 255, 0.42);
+  --route-glow-accent: rgba(20, 184, 166, 0.2);
+  --spark-core: rgba(255, 255, 255, 1);
+  --spark-mid: rgba(255, 247, 228, 0.52);
+  --spark-shadow: rgba(245, 158, 11, 0.6);
+  --card-hover-shadow: 0 22px 46px rgba(17, 24, 39, 0.2);
+  --card-hover-ring: rgba(245, 158, 11, 0.24);
+  --shine-sweep: linear-gradient(115deg, rgba(255, 255, 255, 0) 15%, rgba(255, 255, 255, 0.4) 52%, rgba(255, 255, 255, 0) 82%);
 }
 
 * {
@@ -74,16 +90,16 @@ body {
   height: 250px;
   transform: translateX(-50%);
   border-radius: 999px;
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.42) 0%, rgba(20, 184, 166, 0.2) 34%, transparent 72%);
+  background: radial-gradient(circle, var(--route-glow-core) 0%, var(--route-glow-accent) 34%, transparent 72%);
   filter: blur(13px);
 }
 
 .route-transition-spark {
   width: 14px;
   height: 14px;
-  background: radial-gradient(circle, rgba(255, 255, 255, 1) 0%, rgba(255, 247, 228, 0.52) 52%, transparent 100%);
+  background: radial-gradient(circle, var(--spark-core) 0%, var(--spark-mid) 52%, transparent 100%);
   clip-path: polygon(50% 0%, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0% 50%, 38% 38%);
-  filter: drop-shadow(0 0 16px rgba(245, 158, 11, 0.6));
+  filter: drop-shadow(0 0 16px var(--spark-shadow));
 }
 
 .route-transition-spark-a {
@@ -619,8 +635,8 @@ select:focus {
 .product-card:hover {
   transform: translateY(-7px);
   box-shadow:
-    0 22px 46px rgba(17, 24, 39, 0.2),
-    0 0 0 1px rgba(245, 158, 11, 0.24) inset;
+    var(--card-hover-shadow),
+    0 0 0 1px var(--card-hover-ring) inset;
 }
 
 .product-card::before,
@@ -633,8 +649,8 @@ select:focus {
   opacity: 0;
   z-index: 3;
   clip-path: polygon(50% 0%, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0% 50%, 38% 38%);
-  background: radial-gradient(circle, rgba(255, 255, 255, 1) 0%, rgba(255, 255, 255, 0.2) 65%, transparent 100%);
-  filter: drop-shadow(0 0 10px rgba(245, 158, 11, 0.42));
+  background: radial-gradient(circle, var(--spark-core) 0%, var(--spark-mid) 65%, transparent 100%);
+  filter: drop-shadow(0 0 10px var(--spark-shadow));
 }
 
 .product-card::before {
@@ -675,7 +691,7 @@ select:focus {
   width: 44%;
   height: 130%;
   pointer-events: none;
-  background: linear-gradient(115deg, rgba(255, 255, 255, 0) 15%, rgba(255, 255, 255, 0.4) 52%, rgba(255, 255, 255, 0) 82%);
+  background: var(--shine-sweep);
   transform: skewX(-22deg);
   transition: left 0.58s var(--ease-standard);
 }
