@@ -29,12 +29,34 @@ const AnimatedRoutes = () => {
   return (
     <AnimatePresence mode="wait">
       <motion.div
+        className="route-transition-shell"
         key={location.pathname + location.search}
-        initial={{ opacity: 0, y: 14 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -10 }}
-        transition={{ duration: 0.25, ease: "easeOut" }}
+        initial={{ opacity: 0, y: 22, scale: 0.992 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: -18, scale: 1.004 }}
+        transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
       >
+        <motion.span
+          className="route-transition-glow"
+          aria-hidden="true"
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: [0, 0.35, 0], scale: [0.95, 1.08, 1.12] }}
+          transition={{ duration: 0.65, ease: "easeOut" }}
+        />
+        <motion.span
+          className="route-transition-spark route-transition-spark-a"
+          aria-hidden="true"
+          initial={{ opacity: 0, y: 8, scale: 0.6 }}
+          animate={{ opacity: [0, 0.85, 0], y: [8, -6, -12], scale: [0.6, 1, 0.8] }}
+          transition={{ duration: 0.6, delay: 0.05, ease: "easeOut" }}
+        />
+        <motion.span
+          className="route-transition-spark route-transition-spark-b"
+          aria-hidden="true"
+          initial={{ opacity: 0, y: 6, scale: 0.5 }}
+          animate={{ opacity: [0, 0.8, 0], y: [6, -4, -10], scale: [0.5, 0.95, 0.75] }}
+          transition={{ duration: 0.6, delay: 0.12, ease: "easeOut" }}
+        />
         <Routes location={location}>
           <Route path="/" element={<Home />} />
           <Route path="/products" element={<ProductsPage />} />

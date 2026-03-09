@@ -55,6 +55,47 @@ body {
   overflow-x: hidden;
 }
 
+.route-transition-shell {
+  position: relative;
+  isolation: isolate;
+}
+
+.route-transition-glow,
+.route-transition-spark {
+  position: fixed;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.route-transition-glow {
+  top: 20vh;
+  left: 50%;
+  width: min(56vw, 720px);
+  height: 220px;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.28) 0%, rgba(20, 184, 166, 0.14) 34%, transparent 70%);
+  filter: blur(12px);
+}
+
+.route-transition-spark {
+  width: 10px;
+  height: 10px;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.2) 58%, transparent 100%);
+  clip-path: polygon(50% 0%, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0% 50%, 38% 38%);
+  filter: drop-shadow(0 0 12px rgba(245, 158, 11, 0.48));
+}
+
+.route-transition-spark-a {
+  top: 26vh;
+  right: 16vw;
+}
+
+.route-transition-spark-b {
+  top: 33vh;
+  left: 19vw;
+}
+
 a {
   color: inherit;
   text-decoration: none;
@@ -239,11 +280,12 @@ h4 {
 }
 
 .btn:hover {
-  transform: translateY(-2px);
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 14px 28px rgba(17, 24, 39, 0.18);
 }
 
 .btn:active {
-  transform: translateY(0);
+  transform: translateY(0) scale(0.99);
 }
 
 .btn:disabled {
@@ -257,6 +299,22 @@ h4 {
   color: #ffffff;
   background: linear-gradient(135deg, var(--primary), var(--primary-2));
   box-shadow: 0 10px 22px rgba(15, 118, 110, 0.35);
+}
+
+.btn::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -140%;
+  width: 90%;
+  height: 100%;
+  background: linear-gradient(110deg, transparent 10%, rgba(255, 255, 255, 0.38) 48%, transparent 85%);
+  transform: skewX(-22deg);
+  transition: left 0.55s var(--ease-standard);
+}
+
+.btn:hover::before {
+  left: 155%;
 }
 
 .btn-light {
@@ -509,21 +567,87 @@ select:focus {
 .product-card {
   position: relative;
   overflow: hidden;
-  transition: transform var(--duration-fast) var(--ease-standard), box-shadow var(--duration-med) var(--ease-standard);
+  transition:
+    transform 0.5s var(--ease-standard),
+    box-shadow 0.5s var(--ease-standard),
+    border-color 0.4s var(--ease-standard);
 }
 
 .product-card:hover {
-  transform: translateY(-5px);
-  box-shadow: var(--shadow-lg);
+  transform: translateY(-7px);
+  box-shadow:
+    0 22px 46px rgba(17, 24, 39, 0.2),
+    0 0 0 1px rgba(245, 158, 11, 0.24) inset;
+}
+
+.product-card::before,
+.product-card::after {
+  content: "";
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  pointer-events: none;
+  opacity: 0;
+  z-index: 3;
+  clip-path: polygon(50% 0%, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0% 50%, 38% 38%);
+  background: radial-gradient(circle, rgba(255, 255, 255, 1) 0%, rgba(255, 255, 255, 0.2) 65%, transparent 100%);
+  filter: drop-shadow(0 0 10px rgba(245, 158, 11, 0.42));
+}
+
+.product-card::before {
+  top: 18px;
+  right: 16px;
+}
+
+.product-card::after {
+  top: 44px;
+  left: 15px;
+}
+
+.product-card:hover::before {
+  animation: luxeSparkle 0.58s ease-out 0.05s 1;
+}
+
+.product-card:hover::after {
+  animation: luxeSparkle 0.65s ease-out 0.16s 1;
 }
 
 .product-card img {
   height: 220px;
-  transition: transform 0.55s var(--ease-standard), filter var(--duration-fast) var(--ease-standard);
+  transition: transform 0.55s var(--ease-standard), filter 0.45s var(--ease-standard);
+}
+
+.product-card > a {
+  position: relative;
+  display: block;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.product-card > a::after {
+  content: "";
+  position: absolute;
+  top: -14%;
+  left: -72%;
+  width: 44%;
+  height: 130%;
+  pointer-events: none;
+  background: linear-gradient(115deg, rgba(255, 255, 255, 0) 15%, rgba(255, 255, 255, 0.4) 52%, rgba(255, 255, 255, 0) 82%);
+  transform: skewX(-22deg);
+  transition: left 0.58s var(--ease-standard);
 }
 
 .product-card:hover img {
-  transform: scale(1.06);
+  transform: scale(1.08);
+  filter: brightness(1.04) saturate(1.03);
+}
+
+.product-card:hover > a::after {
+  left: 126%;
+}
+
+.product-card:hover .quick-view-btn {
+  box-shadow: 0 10px 18px rgba(17, 24, 39, 0.16);
 }
 
 .badge-discount {
@@ -649,6 +773,15 @@ select:focus {
 .detail-image {
   max-height: 480px;
   cursor: zoom-in;
+  transition: transform 0.5s var(--ease-standard), box-shadow 0.5s var(--ease-standard), filter 0.4s var(--ease-standard);
+}
+
+.detail-image:hover {
+  transform: scale(1.025);
+  box-shadow:
+    0 22px 46px rgba(17, 24, 39, 0.2),
+    0 0 0 1px rgba(245, 158, 11, 0.22) inset;
+  filter: brightness(1.03);
 }
 
 .detail-thumbs {
@@ -934,6 +1067,21 @@ select:focus {
 
 @keyframes spin {
   to { transform: rotate(360deg); }
+}
+
+@keyframes luxeSparkle {
+  0% {
+    opacity: 0;
+    transform: scale(0.4) rotate(0deg);
+  }
+  40% {
+    opacity: 1;
+    transform: scale(1.15) rotate(22deg);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.75) rotate(40deg);
+  }
 }
 
 .auth-page {
@@ -1318,5 +1466,16 @@ select:focus {
   .newsletter-inline input,
   .newsletter-btn {
     width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

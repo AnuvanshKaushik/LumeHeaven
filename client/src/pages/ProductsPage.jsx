@@ -300,9 +300,10 @@ const ProductsPage = () => {
               <motion.article
                 key={product._id}
                 className={`product-card glass ${addingProductId === product._id ? "cart-pop" : ""}`}
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.25, delay: index * 0.02 }}
+                initial={{ opacity: 0, y: 22, scale: 0.97 }}
+                whileInView={{ opacity: 1, y: 0, scale: 1 }}
+                viewport={{ once: true, amount: 0.2 }}
+                transition={{ duration: 0.45, delay: index * 0.03, ease: [0.22, 1, 0.36, 1] }}
               >
                 <Link to={`/products/${product._id}`}>
                   <img src={image} alt={product.name} loading="lazy" />

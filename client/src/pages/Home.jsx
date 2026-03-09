@@ -15,8 +15,8 @@ const staggerContainer = {
 };
 
 const fadeUp = {
-  hidden: { opacity: 0, y: 24 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.45 } },
+  hidden: { opacity: 0, y: 24, scale: 0.97 },
+  show: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.5 } },
 };
 
 const Home = () => {
