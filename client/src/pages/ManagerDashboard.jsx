@@ -146,9 +146,7 @@ const ManagerDashboard = () => {
     try {
       const formData = new FormData();
       selectedUploadFiles.forEach((file) => formData.append("images", file));
-      const { data } = await api.post("/uploads/products", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      const { data } = await api.post("/uploads/products", formData);
 
       setProductForm((prev) => ({
         ...prev,
