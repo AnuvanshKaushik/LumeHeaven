@@ -1,17 +1,17 @@
 import { useState } from "react";
 import toast from "react-hot-toast";
+import { API_BASE_URL } from "../api/axios";
 
 const GoogleAuthButton = () => {
   const [loading, setLoading] = useState(false);
 
   const handleGoogleLogin = () => {
-    const apiBase = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
-    if (!apiBase) {
+    if (!API_BASE_URL) {
       toast.error("Google login is not configured");
       return;
     }
 
-    const authUrl = `${apiBase.replace(/\/$/, "")}/auth/google`;
+    const authUrl = `${API_BASE_URL}/auth/google`;
     setLoading(true);
     window.location.href = authUrl;
   };
