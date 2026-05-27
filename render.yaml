@@ -16,7 +16,9 @@ services:
       - key: JWT_SECRET
         sync: false
       - key: CLIENT_URL
-        sync: false
+        value: https://lume-heaven-f66b.vercel.app
+      - key: CLIENT_URLS
+        value: https://lume-heaven-f66b.vercel.app
       - key: SESSION_SECRET
         sync: false
       - key: GOOGLE_CLIENT_ID
