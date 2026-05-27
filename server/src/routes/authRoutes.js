@@ -5,7 +5,10 @@ import { protect } from "../middleware/authMiddleware.js";
 
 const router = Router();
 
-const getClientRedirectBase = () => process.env.CLIENT_URL || "http://localhost:5173";
+const getClientRedirectBase = () =>
+  String(process.env.CLIENT_URL || process.env.CLIENT_URLS?.split(",")[0] || "http://localhost:5173")
+    .trim()
+    .replace(/\/+$/, "");
 const isGoogleConfigured = () =>
   Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
 
