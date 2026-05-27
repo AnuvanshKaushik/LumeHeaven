@@ -1,7 +1,14 @@
 import axios from "axios";
 
+const normalizeApiBaseUrl = (value) => {
+  const baseUrl = String(value || "https://lumeheaven.onrender.com/api").trim().replace(/\/+$/, "");
+  return baseUrl.endsWith("/api") ? baseUrl : `${baseUrl}/api`;
+};
+
+export const API_BASE_URL = normalizeApiBaseUrl(import.meta.env.VITE_API_BASE_URL);
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || "https://lumeheaven.onrender.com/api",
+  baseURL: API_BASE_URL,
 });
 
 api.interceptors.request.use((config) => {
