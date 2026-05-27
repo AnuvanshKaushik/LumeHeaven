@@ -48,6 +48,19 @@ const __dirname = path.dirname(__filename);
 const uploadsRoot = path.resolve(__dirname, "../uploads");
 app.set("trust proxy", 1);
 
+const normalizeOrigin = (origin) => String(origin || "").trim().replace(/\/+$/, "");
+const parseOrigins = (value) =>
+  String(value || "")
+    .split(",")
+    .map(normalizeOrigin)
+    .filter(Boolean);
+
+const allowedOrigins = new Set([
+  "https://lume-heaven-f66b.vercel.app",
+  ...parseOrigins(process.env.CLIENT_URL),
+  ...parseOrigins(process.env.CLIENT_URLS),
+]);
+
 app.use(
   cors({
     origin: (origin, callback) => {
@@ -55,10 +68,10 @@ app.use(
         return callback(null, true);
       }
 
-      const allowList = [process.env.CLIENT_URL].filter(Boolean);
-      const isLocalhost = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+      const normalizedOrigin = normalizeOrigin(origin);
+      const isLocalhost = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(normalizedOrigin);
 
-      if (allowList.includes(origin) || isLocalhost) {
+      if (allowedOrigins.has(normalizedOrigin) || isLocalhost) {
         return callback(null, true);
       }
 
