@@ -146,7 +146,9 @@ const ManagerDashboard = () => {
     try {
       const formData = new FormData();
       selectedUploadFiles.forEach((file) => formData.append("images", file));
-      const { data } = await api.post("/uploads/products", formData);
+      const { data } = await api.post("/uploads/products", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
 
       setProductForm((prev) => ({
         ...prev,
@@ -183,7 +185,38 @@ const ManagerDashboard = () => {
       toast.error("Select a category");
       return;
     }
-    if (!productForm.images.length) {
+
+    // Auto-upload any pending selected images before saving
+    let currentImages = [...productForm.images];
+    let currentImageMeta = [...productForm.imageMeta];
+    if (selectedUploadFiles.length > 0) {
+      setUploadingImages(true);
+      try {
+        const formData = new FormData();
+        selectedUploadFiles.forEach((file) => formData.append("images", file));
+        const { data } = await api.post("/uploads/products", formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+        currentImages = [...currentImages, ...data.images.map((image) => image.url)];
+        currentImageMeta = [...currentImageMeta, ...data.images];
+        setProductForm((prev) => ({
+          ...prev,
+          images: currentImages,
+          imageMeta: currentImageMeta,
+        }));
+        localPreviews.forEach((url) => URL.revokeObjectURL(url));
+        setLocalPreviews([]);
+        setSelectedUploadFiles([]);
+      } catch (error) {
+        toast.error(error?.response?.data?.message || "Failed to upload images");
+        setUploadingImages(false);
+        return;
+      } finally {
+        setUploadingImages(false);
+      }
+    }
+
+    if (!currentImages.length) {
       toast.error("Upload at least one product image");
       return;
     }
@@ -197,7 +230,9 @@ const ManagerDashboard = () => {
       price: Number(productForm.price),
       stock: Number(productForm.stock),
       subcategory: productForm.subcategory || null,
-      imageUrl: productForm.images[0],
+      images: currentImages,
+      imageMeta: currentImageMeta,
+      imageUrl: currentImages[0],
     };
 
     setSavingProduct(true);
