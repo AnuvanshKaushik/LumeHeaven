@@ -4,7 +4,6 @@ import { motion } from "framer-motion";
 import toast from "react-hot-toast";
 import api from "../api/axios";
 import Loader from "../components/Loader";
-
 const emptyProduct = {
   name: "",
   price: "",
@@ -15,10 +14,8 @@ const emptyProduct = {
   images: [],
   imageMeta: [],
 };
-
 const emptyCategory = { name: "", description: "" };
 const emptySubcategory = { categoryId: "", name: "", description: "" };
-
 const ManagerDashboard = () => {
   const [products, setProducts] = useState([]);
   const [orders, setOrders] = useState([]);
@@ -37,7 +34,6 @@ const ManagerDashboard = () => {
   const [savingSubcategory, setSavingSubcategory] = useState(false);
   const [uploadingImages, setUploadingImages] = useState(false);
   const [activeSection, setActiveSection] = useState("overview");
-
   const loadAll = async () => {
     try {
       const [productsRes, categoriesRes, ordersRes] = await Promise.all([
@@ -60,29 +56,23 @@ const ManagerDashboard = () => {
       setLoading(false);
     }
   };
-
   useEffect(() => {
     loadAll();
   }, []);
-
   useEffect(() => {
     return () => {
       localPreviews.forEach((url) => URL.revokeObjectURL(url));
     };
   }, [localPreviews]);
-
   const selectedCategory = useMemo(
     () => categories.find((category) => category._id === productForm.category) || null,
     [categories, productForm.category]
   );
-
   const selectedCategorySubcategories = selectedCategory?.subcategories || [];
-
   const selectedSubcategoryCategory = useMemo(
     () => categories.find((category) => category._id === subcategoryForm.categoryId) || null,
     [categories, subcategoryForm.categoryId]
   );
-
   const metrics = useMemo(() => {
     const revenue = orders.reduce((sum, order) => sum + Number(order.total || 0), 0);
     const pendingOrders = orders.filter((order) => order.status === "Pending").length;
@@ -94,7 +84,6 @@ const ManagerDashboard = () => {
       { label: "Revenue", value: `Rs.${Math.round(revenue).toLocaleString()}` },
     ];
   }, [orders, products, categories]);
-
   const resetProductForm = () => {
     setProductForm({
       ...emptyProduct,
@@ -105,43 +94,35 @@ const ManagerDashboard = () => {
     localPreviews.forEach((url) => URL.revokeObjectURL(url));
     setLocalPreviews([]);
   };
-
   const resetCategoryForm = () => {
     setEditingCategoryId(null);
     setCategoryForm(emptyCategory);
   };
-
   const resetSubcategoryForm = () => {
     setEditingSubcategory({ categoryId: null, subcategoryId: null });
     setSubcategoryForm((prev) => ({ ...emptySubcategory, categoryId: prev.categoryId || categories[0]?._id || "" }));
   };
-
   const setImageFiles = (incomingFiles) => {
     const files = Array.from(incomingFiles || []);
     if (!files.length) return;
-
     const validFiles = files.filter((file) => file.type.startsWith("image/") && file.size <= 5 * 1024 * 1024);
     if (!validFiles.length) {
       toast.error("Only image files up to 5MB are allowed");
       return;
     }
-
     const newPreviews = validFiles.map((file) => URL.createObjectURL(file));
     setSelectedUploadFiles((prev) => [...prev, ...validFiles]);
     setLocalPreviews((prev) => [...prev, ...newPreviews]);
   };
-
   const onDropFiles = (event) => {
     event.preventDefault();
     setImageFiles(event.dataTransfer.files);
   };
-
   const uploadSelectedImages = async () => {
     if (!selectedUploadFiles.length) {
       toast.error("Select images before uploading");
       return;
     }
-
     setUploadingImages(true);
     try {
       const formData = new FormData();
@@ -149,54 +130,21 @@ const ManagerDashboard = () => {
       const { data } = await api.post("/uploads/products", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-
+      const { data } = await api.post("/uploads/products", formData);
       setProductForm((prev) => ({
         ...prev,
-        images: [...prev.images, ...data.images.map((image) => image.url)],
-        imageMeta: [...prev.imageMeta, ...data.images],
-      }));
-      toast.success(`${data.images.length} image(s) uploaded`);
-      localPreviews.forEach((url) => URL.revokeObjectURL(url));
-      setLocalPreviews([]);
-      setSelectedUploadFiles([]);
-    } catch (error) {
-      toast.error(error?.response?.data?.message || "Failed to upload images");
-    } finally {
-      setUploadingImages(false);
-    }
-  };
-
-  const removeUploadedImage = (index) => {
-    setProductForm((prev) => ({
-      ...prev,
-      images: prev.images.filter((_, i) => i !== index),
-      imageMeta: prev.imageMeta.filter((_, i) => i !== index),
-    }));
-  };
-
-  const saveProduct = async (event) => {
-    event.preventDefault();
-
-    if (!productForm.name.trim()) {
-      toast.error("Product name is required");
-      return;
-    }
-    if (!productForm.category) {
-      toast.error("Select a category");
-      return;
-    }
-
-    // Auto-upload any pending selected images before saving
-    let currentImages = [...productForm.images];
-    let currentImageMeta = [...productForm.imageMeta];
-    if (selectedUploadFiles.length > 0) {
-      setUploadingImages(true);
       try {
         const formData = new FormData();
         selectedUploadFiles.forEach((file) => formData.append("images", file));
         const { data } = await api.post("/uploads/products", formData, {
           headers: { "Content-Type": "multipart/form-data" },
         });
+        const { data } = await api.post("/uploads/products", formData);
+        if (!data.images || !data.images.length) {
+          toast.error("Server returned no images. Please try again.");
+          setUploadingImages(false);
+          return;
+        }
         currentImages = [...currentImages, ...data.images.map((image) => image.url)];
         currentImageMeta = [...currentImageMeta, ...data.images];
         setProductForm((prev) => ({
@@ -209,13 +157,15 @@ const ManagerDashboard = () => {
         setSelectedUploadFiles([]);
       } catch (error) {
         toast.error(error?.response?.data?.message || "Failed to upload images");
+        console.error("Image upload failed:", error?.response?.status, error?.response?.data, error?.message);
+        const serverMsg = error?.response?.data?.message;
+        toast.error(serverMsg || `Image upload failed: ${error?.message || "Unknown error"}`);
         setUploadingImages(false);
         return;
       } finally {
         setUploadingImages(false);
       }
     }
-
     if (!currentImages.length) {
       toast.error("Upload at least one product image");
       return;
@@ -224,7 +174,6 @@ const ManagerDashboard = () => {
       toast.error("Price and stock cannot be negative");
       return;
     }
-
     const payload = {
       ...productForm,
       price: Number(productForm.price),
@@ -234,7 +183,6 @@ const ManagerDashboard = () => {
       imageMeta: currentImageMeta,
       imageUrl: currentImages[0],
     };
-
     setSavingProduct(true);
     try {
       if (editingProductId) {
@@ -244,7 +192,6 @@ const ManagerDashboard = () => {
         await api.post("/products", payload);
         toast.success("Product created");
       }
-
       resetProductForm();
       await loadAll();
     } catch (error) {
@@ -253,14 +200,12 @@ const ManagerDashboard = () => {
       setSavingProduct(false);
     }
   };
-
   const saveCategory = async (event) => {
     event.preventDefault();
     if (!categoryForm.name.trim()) {
       toast.error("Category name is required");
       return;
     }
-
     setSavingCategory(true);
     try {
       if (editingCategoryId) {
@@ -278,10 +223,8 @@ const ManagerDashboard = () => {
       setSavingCategory(false);
     }
   };
-
   const saveSubcategory = async (event) => {
     event.preventDefault();
-
     if (!subcategoryForm.categoryId) {
       toast.error("Select a category for subcategory");
       return;
@@ -290,7 +233,6 @@ const ManagerDashboard = () => {
       toast.error("Subcategory name is required");
       return;
     }
-
     setSavingSubcategory(true);
     try {
       if (editingSubcategory.categoryId && editingSubcategory.subcategoryId) {
@@ -317,13 +259,11 @@ const ManagerDashboard = () => {
       setSavingSubcategory(false);
     }
   };
-
   const editCategory = (category) => {
     setEditingCategoryId(category._id);
     setCategoryForm({ name: category.name, description: category.description || "" });
     setActiveSection("categories");
   };
-
   const deleteCategory = async (categoryId) => {
     try {
       await api.delete(`/categories/${categoryId}`);
@@ -336,7 +276,6 @@ const ManagerDashboard = () => {
       toast.error(error?.response?.data?.message || "Failed to delete category");
     }
   };
-
   const editSubcategory = (categoryId, subcategory) => {
     setEditingSubcategory({ categoryId, subcategoryId: subcategory._id });
     setSubcategoryForm({
@@ -346,7 +285,6 @@ const ManagerDashboard = () => {
     });
     setActiveSection("categories");
   };
-
   const deleteSubcategory = async (categoryId, subcategoryId) => {
     try {
       await api.delete(`/categories/${categoryId}/subcategories/${subcategoryId}`);
@@ -359,7 +297,6 @@ const ManagerDashboard = () => {
       toast.error(error?.response?.data?.message || "Failed to delete subcategory");
     }
   };
-
   const deleteProduct = async (id) => {
     try {
       await api.delete(`/products/${id}`);
@@ -369,7 +306,6 @@ const ManagerDashboard = () => {
       toast.error(error?.response?.data?.message || "Failed to delete product");
     }
   };
-
   const editProduct = (product) => {
     setEditingProductId(product._id);
     setProductForm({
@@ -387,9 +323,7 @@ const ManagerDashboard = () => {
     setLocalPreviews([]);
     setActiveSection("products");
   };
-
   if (loading) return <Loader text="Loading manager dashboard..." />;
-
   return (
     <main className="page-wrap manager-shell">
       <aside className="manager-sidebar glass">
@@ -410,7 +344,6 @@ const ManagerDashboard = () => {
           Analytics
         </Link>
       </aside>
-
       <section className="manager-content">
         {activeSection === "overview" && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
@@ -437,7 +370,6 @@ const ManagerDashboard = () => {
             </section>
           </motion.div>
         )}
-
         {activeSection === "products" && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="manager-grid">
             <form className="glass form-grid" onSubmit={saveProduct}>
@@ -462,7 +394,6 @@ const ManagerDashboard = () => {
               </select>
               <input required type="number" min={0} placeholder="Stock" value={productForm.stock} onChange={(event) => setProductForm((prev) => ({ ...prev, stock: event.target.value }))} />
               <textarea required rows={3} placeholder="Description" value={productForm.description} onChange={(event) => setProductForm((prev) => ({ ...prev, description: event.target.value }))} />
-
               <div className="drop-zone" onDragOver={(event) => event.preventDefault()} onDrop={onDropFiles}>
                 <p>Drag and drop product images here</p>
                 <p>or</p>
@@ -471,7 +402,6 @@ const ManagerDashboard = () => {
                   <input hidden type="file" accept="image/*" multiple onChange={(event) => setImageFiles(event.target.files)} />
                 </label>
               </div>
-
               {localPreviews.length > 0 && (
                 <div className="preview-grid">
                   {localPreviews.map((preview) => (
@@ -479,13 +409,11 @@ const ManagerDashboard = () => {
                   ))}
                 </div>
               )}
-
               {selectedUploadFiles.length > 0 && (
                 <button className="btn btn-ghost ripple" type="button" onClick={uploadSelectedImages} disabled={uploadingImages}>
                   {uploadingImages ? "Uploading..." : `Upload ${selectedUploadFiles.length} selected image(s)`}
                 </button>
               )}
-
               {!!productForm.images.length && (
                 <div className="preview-grid">
                   {productForm.images.map((img, index) => (
@@ -498,7 +426,6 @@ const ManagerDashboard = () => {
                   ))}
                 </div>
               )}
-
               <button className="btn btn-primary ripple" type="submit" disabled={savingProduct}>
                 {savingProduct ? "Saving..." : editingProductId ? "Update Product" : "Create Product"}
               </button>
@@ -508,7 +435,6 @@ const ManagerDashboard = () => {
                 </button>
               )}
             </form>
-
             <section className="section-wrap glass">
               <h2>Inventory ({products.length})</h2>
               <div className="product-grid">
@@ -538,7 +464,6 @@ const ManagerDashboard = () => {
             </section>
           </motion.div>
         )}
-
         {activeSection === "categories" && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="manager-grid">
             <form className="glass form-grid" onSubmit={saveCategory}>
@@ -554,7 +479,6 @@ const ManagerDashboard = () => {
                 </button>
               )}
             </form>
-
             <form className="glass form-grid" onSubmit={saveSubcategory}>
               <h2>Manage Subcategories</h2>
               <select required className="animated-dropdown" value={subcategoryForm.categoryId} onChange={(event) => setSubcategoryForm((prev) => ({ ...prev, categoryId: event.target.value }))}>
@@ -591,7 +515,6 @@ const ManagerDashboard = () => {
                 </div>
               )}
             </form>
-
             <section className="glass category-tree">
               <h2>Category Tree</h2>
               {categories.map((category) => (
@@ -627,5 +550,4 @@ const ManagerDashboard = () => {
     </main>
   );
 };
-
 export default ManagerDashboard;
