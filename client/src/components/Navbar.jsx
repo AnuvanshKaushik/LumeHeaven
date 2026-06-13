@@ -54,7 +54,7 @@ const Navbar = () => {
   return (
     <header className="top-nav">
       <Link className="brand" to="/">
-        LUMEHEAVEN
+        DRTS
       </Link>
       <nav className="nav-main">
         <div className="nav-links">
