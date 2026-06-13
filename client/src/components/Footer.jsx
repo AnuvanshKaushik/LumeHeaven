@@ -6,13 +6,13 @@ const Footer = () => {
     <footer className="site-footer">
       <div className="footer-grid">
         <div>
-          <h3>LUMEHEAVEN</h3>
+          <h3>DRTS</h3>
           <p>Luxury jewellery crafted with timeless artistry and modern elegance.</p>
         </div>
         <div>
           <h4>Contact</h4>
-          <p>Email:lumeheaven@gmail.com</p>
-          <p>Phone: +91 9971715822</p>
+          <p>Email:varunkashyap2811@gmail.com</p>
+          <p>Phone: +91 96672 81129</p>
           <p>Delhi, India</p>
         </div>
         <div>
@@ -32,7 +32,7 @@ const Footer = () => {
           <NewsletterForm placeholder="Your email" />
         </div>
       </div>
-      <p className="copyright">&copy; {new Date().getFullYear()} LUMEHEAVEN. All rights reserved.</p>
+      <p className="copyright">&copy; {new Date().getFullYear()} DRTS. All rights reserved.</p>
       <div className="footer-links">
         <Link to="/products">Shop</Link>
         <Link to="/customer-auth">Customer Login</Link>
