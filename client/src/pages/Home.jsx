@@ -172,7 +172,7 @@ const Home = () => {
       </motion.section>
 
       <section className="section-wrap glass newsletter-block">
-        <h2>Join the LUMEHEAVEN Circle</h2>
+        <h2>Join the DRTS Circle</h2>
         <p>Get priority access to launches, offers, and styling notes.</p>
         <NewsletterForm placeholder="Enter your email" />
       </section>
